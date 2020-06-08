@@ -123,7 +123,8 @@ namespace imageEncryptor
                                 }
                                 else
                                 {
-                                    s.WriteByte(0x00);
+                                    byte[] Padding = new byte[AmountOfBytesPerWidth];
+                                    s.Write(Padding, 0, Padding.Length);
                                 }
                             }
                             //Yeah. That's it. I think?
