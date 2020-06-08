@@ -84,7 +84,7 @@ namespace imageEncryptor
                             //Now, we should write BMP size header
                             int PixelAmount = W * H;
                             int BMPSize = PixelAmount * 3 + //1 pixel = 3 bytes.
-                                H*(W%4) + //Total length of padding
+                                H * (W % 4) + //Total length of padding
                                 54; //54 bytes is the length of the whole header part.
                             Baker.Second(s, BMPSize);
                             //Application specific header. It will be...
@@ -96,51 +96,39 @@ namespace imageEncryptor
                             //Now, we've got ourselves a nice base file for hiding stuff.
                             int AmountOfBytesPerWidth = W % 4; //Shows how much we can hide in every line.
                             int CurrentOffset = 0; //Where we stopped reading from encrypted
-                            for (int y = 0; y < H; y++)
+                            while (EncList.Count < (H * AmountOfBytesPerWidth)) EncList.Add(0x00);
+                            for (int y = H-1; y >= 0; y--)
                             {
                                 for (int x = 0; x < W; x++)
                                 {
                                     Color clr = colormap[x, y];
                                     byte R = BitConverter.GetBytes((byte)clr.R)[0];
                                     byte G = BitConverter.GetBytes((byte)clr.G)[0];
-                                    byte B = BitConverter.GetBytes((byte)clr.B)[0]; 
+                                    byte B = BitConverter.GetBytes((byte)clr.B)[0];
                                     s.Write(new byte[3] { B, G, R }, 0, 3); //We just copy pixels
                                 }
                                 //And once the line has ended (y = 0, x = 255, for example...)
-                                if (CurrentOffset <= EncList.Count)
-                                {
-                                    byte[] WriteB = default(byte[]);
-                                    if (CurrentOffset + AmountOfBytesPerWidth <= EncList.Count)
-                                    {
-                                        WriteB = EncList.GetRange(CurrentOffset, AmountOfBytesPerWidth).ToArray();
-                                    }
-                                    else
-                                    {
-                                        WriteB = EncList.GetRange(CurrentOffset, EncList.Count - CurrentOffset).ToArray();
-                                    }
-                                    s.Write(WriteB, 0, WriteB.Length); //We write encrypted data as a padding.
-                                    CurrentOffset += WriteB.Length;
-                                }
-                                else
-                                {
-                                    byte[] Padding = new byte[AmountOfBytesPerWidth];
-                                    s.Write(Padding, 0, Padding.Length);
-                                }
+
+                                var WriteB = EncList.GetRange(CurrentOffset, AmountOfBytesPerWidth).ToArray();
+                                s.Write(WriteB, 0, WriteB.Length); //We write encrypted data as a padding.
+                                CurrentOffset += WriteB.Length;
+
+                                
                             }
                             //Yeah. That's it. I think?
                             s.Flush();
                             //Hehe.
                             Console.WriteLine("[+++] Done encrypting. New file saved as new.png. [+++]");
+                            continue;
                         }
-                        Console.WriteLine("Press ENTER to continue...");
-                        Console.ReadLine();
-                        Console.Clear();
-                        continue;
                     }
-                }
-                else if (answ == "2")
-                {
+                    else if (answ == "2")
+                    {
 
+                    }
+                    Console.WriteLine("Press ENTER to continue...");
+                    Console.ReadLine();
+                    Console.Clear();
                 }
             }
         }
