@@ -202,11 +202,21 @@ namespace imageEncryptor
         {
             s.Write(IDField, 0, IDField.Length);
         }
+        /// <summary>
+        /// Adds BMP size header to the file.
+        /// </summary>
+        /// <param name="s"></param>
+        /// <param name="BMPSize"></param>
         public static void Second(FileStream s, int BMPSize)
         {
             byte[] Bytes = BitConverter.GetBytes(BMPSize);
             s.Write(Bytes, 0, Bytes.Length);
         }
+        /// <summary>
+        /// Adds program-specific unused value to the file.
+        /// </summary>
+        /// <param name="s"></param>
+        /// <param name="header"></param>
         public static void Third(FileStream s, string header)
         {
             Third(s, Encoding.UTF8.GetBytes(header));
@@ -220,11 +230,20 @@ namespace imageEncryptor
                 throw new ArgumentException("Header length should be 4 bytes.");
             }
         }
+        /// <summary>
+        /// Writes offset to pixel array to the file.
+        /// </summary>
+        /// <param name="s"></param>
         public static void Fourth(FileStream s)
         {
             s.Write(DataOffset, 0, DataOffset.Length);
         }
-
+        /// <summary>
+        /// Manages DIB header creation
+        /// </summary>
+        /// <param name="s"></param>
+        /// <param name="w"></param>
+        /// <param name="h"></param>
         public static void DIB(FileStream s, int w, int h)
         {
             s.Write(DIBNumber, 0, DIBNumber.Length);
