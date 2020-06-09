@@ -15,7 +15,7 @@ namespace imageEncryptor
         {
             while (true)
             {
-                Console.WriteLine("=[ Welcome to Image Encryptor by IKTeam v0.1 ]=");
+                Console.WriteLine("=[ Welcome to Image Encryptor by IKTeam v1.0 ]=");
                 Console.WriteLine();
                 Console.WriteLine("=[1]= - Encrypt an image.");
                 Console.WriteLine("=[2]= - Decrypt an image.");
@@ -89,7 +89,7 @@ namespace imageEncryptor
                             break;
                         }
                         //Now, the nasty part begins.
-                        using (FileStream s = new FileStream("new.png", FileMode.Create))
+                        using (FileStream s = new FileStream("new.bmp", FileMode.Create))
                         {
                             //First, write initial header
                             Baker.BMHeader(s);
@@ -134,7 +134,7 @@ namespace imageEncryptor
                             //Yeah. That's it. I think?
                             s.Flush();
                             //Hehe.
-                            Console.WriteLine("[+++] Done encrypting. New file saved as new.png. [+++]");
+                            Console.WriteLine("[+++] Done encrypting. New file saved as new.bmp. [+++]");
                         }
                     } else
                     {
@@ -279,7 +279,7 @@ namespace imageEncryptor
             {
                 if (inp[i] == to_trim)
                 {
-                    inp.RemoveAt(i); i--;
+                    inp.RemoveAt(i);
                 } else
                 {
                     break;
