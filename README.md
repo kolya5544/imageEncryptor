@@ -31,19 +31,35 @@ Pull requests and code changes are welcome. For major changes, or new features, 
 ## Troubleshooting
 ### Most common errors
 `System.Security.Cryptography.CryptographicException: 'Specified key is a known weak key for 'TripleDES' and cannot be used.'` - Please, use a password that is not a common password for hackers to prevent losing security factor of hiding data inside pictures.
+
 `[!!!] Encrypted image content WILL differ from old image. Press ENTER to acknowledge.` - Not an error, but a warning. It means, that W % 4 == 0. Unfortunately, due to algorithm that we use to hide data inside pictures, we have to extend your picture 1 pixel to the right if W % 4 == 0.
+
 `[!!!] Text to encode is too big to fit inside an image. Program will be stopped.` - Decrease text length and increase picture width. Make sure width % 3 equals 0, as it gets the best results.
+
 `[---] Couldn't confirm the password.` - Wrong password. Try leaving it empty, or recheck if password is correct.
 
 ### F.A.Q
+
+
 Q: `I've accidentally forgot the password for a picture! How do I retrieve my data?`
+
 A: You can't. We use TripleDES to encrypt contents before hiding them
+
+
 Q: `Does picture quality decrease after encrypting?`
+
 A: No, the only quality loss is you can't have transparency in your pictures.
+
+
 Q: `Program doesnt seem to run properly/doesn't start at all!`
+
 A: Make sure that you have both [.NET Core 3.1](https://dotnet.microsoft.com/download/dotnet-core) and [.NET Framework]( https://dotnet.microsoft.com/download/dotnet-framework)
+
+
 Q: `Do you support Windows XP/2000/98/95?`
+
 A: No
+
 
 ## License
 [MIT](https://choosealicense.com/licenses/mit/)
