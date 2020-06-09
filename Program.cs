@@ -47,34 +47,53 @@ namespace imageEncryptor
                             Console.WriteLine("[!!!] Encrypted image content WILL differ from old image. Press ENTER to acknowledge.");
                             Console.ReadLine();
                         }
+                        Color[,] colormap = null;
+                        if (W % 4 == 0 && W >= 100)
+                        {
+                            colormap = new Color[W + 1, H];
+                        }
+                        else
+                        {
+                            colormap = new Color[W, H]; //It just feels better to work with, IMO.
+                        }
+                        var InitW = b.Width;
+                        var InitH = b.Height;
+                        if (W % 4 == 0)
+                        {
+                            W = colormap.GetLength(0);
+                            H = colormap.GetLength(1);
+                        }
+                        for (int y = 0; y < H; y++)
+                        {
+                            for (int x = 0; x < W; x++)
+                            {
+                                if (W % 4 == 0 && x == W - 1 && W <= 100)
+                                {
+
+                                }
+                                else
+                                {
+                                    Color pre = Color.White;
+                                    if (InitW % 4 == 0 && InitW >= 100 && x == W - 1)
+                                    {
+                                        pre = b.GetPixel(x - 1, y); //We basically extend picture 1 pixel to right.
+                                    }
+                                    else
+                                    {
+                                        pre = b.GetPixel(x, y); //Otherwise just copy it entirely to Color[,] 2D array
+                                    }
+                                    var newColor = Color.FromArgb(255, pre.R, pre.G, pre.B);
+                                    colormap[x, y] = pre;
+                                }
+                            }
+                        }
+
                         if (Encrypted.Length > H * (W % 4))
                         {
                             Console.WriteLine("[!!!] Text to encode is too big to fit inside an image. Program will be stopped.");
                             Console.WriteLine("Length specified (ENCRYPTED data): " + Encrypted.Length + ". Should not exceed: " + H * (W % 4));
                             Console.ReadLine();
                             break;
-                        }
-                        Color[,] colormap = new Color[W, H]; //It just feels better to work with, IMO.
-                        for (int y = 0; y < H; y++)
-                        {
-                            for (int x = 0; x < W; x++)
-                            {
-                                if (W % 4 == 0 && x == W - 1)
-                                {
-
-                                }
-                                else
-                                {
-                                    Color pre = b.GetPixel(x, y);
-                                    var newColor = Color.FromArgb(255, pre.R, pre.G, pre.B);
-                                    colormap[x, y] = pre;
-                                }
-                            }
-                        }
-                        if (W % 4 == 0)
-                        {
-                            W = colormap.GetLength(0);
-                            H = colormap.GetLength(1);
                         }
                         //Now, the nasty part begins.
                         using (FileStream s = new FileStream("new.png", FileMode.Create))
@@ -97,7 +116,7 @@ namespace imageEncryptor
                             int AmountOfBytesPerWidth = W % 4; //Shows how much we can hide in every line.
                             int CurrentOffset = 0; //Where we stopped reading from encrypted
                             while (EncList.Count < (H * AmountOfBytesPerWidth)) EncList.Add(0x00);
-                            for (int y = H-1; y >= 0; y--)
+                            for (int y = H - 1; y >= 0; y--)
                             {
                                 for (int x = 0; x < W; x++)
                                 {
@@ -112,19 +131,16 @@ namespace imageEncryptor
                                 var WriteB = EncList.GetRange(CurrentOffset, AmountOfBytesPerWidth).ToArray();
                                 s.Write(WriteB, 0, WriteB.Length); //We write encrypted data as a padding.
                                 CurrentOffset += WriteB.Length;
-
-                                
                             }
                             //Yeah. That's it. I think?
                             s.Flush();
                             //Hehe.
                             Console.WriteLine("[+++] Done encrypting. New file saved as new.png. [+++]");
-                            continue;
                         }
                     }
                     else if (answ == "2")
                     {
-
+                        
                     }
                     Console.WriteLine("Press ENTER to continue...");
                     Console.ReadLine();
@@ -154,7 +170,6 @@ namespace imageEncryptor
                     {
                         using (var swEncrypt = new StreamWriter(csEncrypt))
                         {
-                            //Write all data to the stream.
                             swEncrypt.Write(text);
                         }
                         encrypted = msEncrypt.ToArray();
