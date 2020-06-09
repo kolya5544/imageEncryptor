@@ -79,9 +79,7 @@ namespace imageEncryptor
                         Console.Write("==> Contents to be encrypted (only text for now.): ");
                         string content = Console.ReadLine();
                         string ToBeEncrypted = "IKT" + content;
-                        List<byte> TBEList = Encoding.UTF8.GetBytes(ToBeEncrypted).ToList();
-                        while (TBEList.Count < (H * (W % 4))) TBEList.Add(0x00);
-                        byte[] Encrypted = Encrypt(TBEList.ToArray(), Encoding.UTF8.GetBytes(password));
+                        byte[] Encrypted = Encrypt(Encoding.UTF8.GetBytes(ToBeEncrypted), Encoding.UTF8.GetBytes(password));
                         List<byte> EncList = Encrypted.ToList();
                         if (Encrypted.Length > H * (W % 4))
                         {
@@ -110,7 +108,13 @@ namespace imageEncryptor
                             //Now, we've got ourselves a nice base file for hiding stuff.
                             int AmountOfBytesPerWidth = W % 4; //Shows how much we can hide in every line.
                             int CurrentOffset = 0; //Where we stopped reading from encrypted
-                            while (EncList.Count < (H * AmountOfBytesPerWidth)) EncList.Add(0x00);
+                            if (EncList[EncList.Count - 1] == 0x00)
+                            {
+                                while (EncList.Count < (H * AmountOfBytesPerWidth)) EncList.Add(0x01);
+                            } else
+                            {
+                                while (EncList.Count < (H * AmountOfBytesPerWidth)) EncList.Add(0x00);
+                            }
                             for (int y = H - 1; y >= 0; y--)
                             {
                                 for (int x = 0; x < W; x++)
@@ -177,9 +181,11 @@ namespace imageEncryptor
                             string password = Console.ReadLine();
                             if (password.Length == 0)
                                 password = "D3faultPassw0rd";
-                            byte[] decrypted = Decrypt(EncryptedBytes.ToArray(), Encoding.UTF8.GetBytes(password));
+                            byte trun = EncryptedBytes[EncryptedBytes.Count - 1];
+                            byte[] tbd = Trim(EncryptedBytes.ToArray(), trun);
+                            byte[] decrypted = Decrypt(tbd, Encoding.UTF8.GetBytes(password));
                             string finalResult = Encoding.UTF8.GetString(decrypted);
-                            finalResult = finalResult.Trim();
+                            finalResult = finalResult.Trim((char)0x00);
                             if (finalResult.StartsWith("IKT"))
                             {
                                 Console.WriteLine("[+++] Successfully extracted text. [+++]");
@@ -266,7 +272,21 @@ namespace imageEncryptor
             tdes.Clear();
             return resultArray;
         }
-
+        public static byte[] Trim(byte[] input, byte to_trim)
+        {
+            List<byte> inp = input.ToList();
+            for (int i = inp.Count-1; i>0; i--)
+            {
+                if (inp[i] == to_trim)
+                {
+                    inp.RemoveAt(i); i--;
+                } else
+                {
+                    break;
+                }
+            }
+            return inp.ToArray();
+        }
 
     }
 
