@@ -185,11 +185,9 @@ namespace imageEncryptor
                             byte[] tbd = Trim(EncryptedBytes.ToArray(), trun);
                             byte[] decrypted = Decrypt(tbd, Encoding.UTF8.GetBytes(password));
                             string finalResult = Encoding.UTF8.GetString(decrypted);
-                            finalResult = finalResult.Trim((char)0x00);
                             if (finalResult.StartsWith("IKT"))
                             {
                                 Console.WriteLine("[+++] Successfully extracted text. [+++]");
-                                Console.WriteLine("Text length: " + finalResult.Length);
                                 Console.WriteLine("Text representation: " + finalResult.Substring(3));
                             } else
                             {
