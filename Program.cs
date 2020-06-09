@@ -48,7 +48,7 @@ namespace imageEncryptor
                             Console.ReadLine();
                         }
                         Color[,] colormap = null;
-                        if (W % 4 == 0 && W >= 100)
+                        if (W % 4 == 0)
                         {
                             colormap = new Color[W + 1, H];
                         }
@@ -67,24 +67,18 @@ namespace imageEncryptor
                         {
                             for (int x = 0; x < W; x++)
                             {
-                                if (W % 4 == 0 && x == W - 1 && W <= 100)
+                                Color pre = Color.White;
+                                if (InitW % 4 == 0 && x == W - 1)
                                 {
-
+                                    pre = b.GetPixel(x - 1, y); //We basically extend picture 1 pixel to right.
                                 }
                                 else
                                 {
-                                    Color pre = Color.White;
-                                    if (InitW % 4 == 0 && InitW >= 100 && x == W - 1)
-                                    {
-                                        pre = b.GetPixel(x - 1, y); //We basically extend picture 1 pixel to right.
-                                    }
-                                    else
-                                    {
-                                        pre = b.GetPixel(x, y); //Otherwise just copy it entirely to Color[,] 2D array
-                                    }
-                                    var newColor = Color.FromArgb(255, pre.R, pre.G, pre.B);
-                                    colormap[x, y] = pre;
+                                    pre = b.GetPixel(x, y); //Otherwise just copy it entirely to Color[,] 2D array
                                 }
+                                var newColor = Color.FromArgb(255, pre.R, pre.G, pre.B);
+                                colormap[x, y] = pre;
+
                             }
                         }
 
@@ -138,15 +132,56 @@ namespace imageEncryptor
                             Console.WriteLine("[+++] Done encrypting. New file saved as new.png. [+++]");
                         }
                     }
-                    else if (answ == "2")
+                    
+                    
+                }
+                else if (answ == "2")
+                {
+                    Console.Write("===> Path to an encrypted image: ");
+                    string path = Console.ReadLine();
+                    if (File.Exists(path))
                     {
-                        
+                        byte[] FileContents = File.ReadAllBytes(path);
+                        int PictureLocation = IndexOf(FileContents, new byte[4] { 0x49, 0x4B, 0x54, 0x4D }); //"IKTM"
+                        if (PictureLocation >= 6)
+                        {
+                            List<byte> Contents = FileContents.ToList();
+                            byte[] s = Contents.GetRange(PictureLocation - 4, 4).ToArray();
+                            int FileSize = BitConverter.ToInt32(s);
+                            byte[] ImageContents = Contents.GetRange(PictureLocation - 6, FileSize).ToArray();
+                        }
                     }
-                    Console.WriteLine("Press ENTER to continue...");
-                    Console.ReadLine();
-                    Console.Clear();
+                    else
+                    {
+                        Console.WriteLine("[---] Cannot find the file you've specified!");
+                    }
+                }
+                Console.WriteLine("Press ENTER to continue...");
+                Console.ReadLine();
+                Console.Clear();
+            }
+        }
+        public static int IndexOf(byte[] arrayToSearchThrough, byte[] patternToFind)
+        {
+            if (patternToFind.Length > arrayToSearchThrough.Length)
+                return -1;
+            for (int i = 0; i < arrayToSearchThrough.Length - patternToFind.Length; i++)
+            {
+                bool found = true;
+                for (int j = 0; j < patternToFind.Length; j++)
+                {
+                    if (arrayToSearchThrough[i + j] != patternToFind[j])
+                    {
+                        found = false;
+                        break;
+                    }
+                }
+                if (found)
+                {
+                    return i;
                 }
             }
+            return -1;
         }
 
         public static byte[] EncryptText(string text, string key)
