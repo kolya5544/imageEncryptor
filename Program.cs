@@ -27,15 +27,10 @@ namespace imageEncryptor
                 {
                     Console.Write("==> Path to an image (ex. image.png or C:/image.png). Shouldn't have transparency: ");
                     string path = Console.ReadLine();
-                    Console.Write("==> Password (necessary to decrypt. Leave empty to none.): ");
+                    Console.Write("==> Password (necessary to decrypt. Leave empty to none. No longer than 24): ");
                     string password = Console.ReadLine();
                     if (password.Length == 0)
                         password = "D3faultPassw0rd";
-                    Console.Write("==> Contents to be encrypted (only text for now.): ");
-                    string content = Console.ReadLine();
-                    string ToBeEncrypted = "IKT" + content;
-                    byte[] Encrypted = EncryptText(ToBeEncrypted, password);
-                    List<byte> EncList = Encrypted.ToList();
                     Console.WriteLine("[+] Started processing! [+]");
                     if (File.Exists(path))
                     {
@@ -81,7 +76,13 @@ namespace imageEncryptor
 
                             }
                         }
-
+                        Console.Write("==> Contents to be encrypted (only text for now.): ");
+                        string content = Console.ReadLine();
+                        string ToBeEncrypted = "IKT" + content;
+                        List<byte> TBEList = Encoding.UTF8.GetBytes(ToBeEncrypted).ToList();
+                        while (TBEList.Count < (H * (W % 4))) TBEList.Add(0x00);
+                        byte[] Encrypted = Encrypt(TBEList.ToArray(), Encoding.UTF8.GetBytes(password));
+                        List<byte> EncList = Encrypted.ToList();
                         if (Encrypted.Length > H * (W % 4))
                         {
                             Console.WriteLine("[!!!] Text to encode is too big to fit inside an image. Program will be stopped.");
@@ -93,17 +94,17 @@ namespace imageEncryptor
                         using (FileStream s = new FileStream("new.png", FileMode.Create))
                         {
                             //First, write initial header
-                            Baker.First(s);
+                            Baker.BMHeader(s);
                             //Now, we should write BMP size header
                             int PixelAmount = W * H;
                             int BMPSize = PixelAmount * 3 + //1 pixel = 3 bytes.
                                 H * (W % 4) + //Total length of padding
                                 54; //54 bytes is the length of the whole header part.
-                            Baker.Second(s, BMPSize);
+                            Baker.FileSizeHeader(s, BMPSize);
                             //Application specific header. It will be...
-                            Baker.Third(s, "IKTM"); //IKTM
+                            Baker.IKTMHeader(s, "IKTM"); //IKTM
                             //Static offset of pixel data.
-                            Baker.Fourth(s);
+                            Baker.PixelOffsetHeader(s);
                             //DIB header, fully handled by one function (it's mostly static.)
                             Baker.DIB(s, W, H);
                             //Now, we've got ourselves a nice base file for hiding stuff.
@@ -131,6 +132,9 @@ namespace imageEncryptor
                             //Hehe.
                             Console.WriteLine("[+++] Done encrypting. New file saved as new.png. [+++]");
                         }
+                    } else
+                    {
+                        Console.WriteLine("[---] Cannot find the file specified! [---]");
                     }
                     
                     
@@ -146,9 +150,51 @@ namespace imageEncryptor
                         if (PictureLocation >= 6)
                         {
                             List<byte> Contents = FileContents.ToList();
-                            byte[] s = Contents.GetRange(PictureLocation - 4, 4).ToArray();
-                            int FileSize = BitConverter.ToInt32(s);
+                            byte[] FSBytes = Contents.GetRange(PictureLocation - 4, 4).ToArray();
+                            int FileSize = BitConverter.ToInt32(FSBytes);
                             byte[] ImageContents = Contents.GetRange(PictureLocation - 6, FileSize).ToArray();
+                            List<byte> ICList = ImageContents.ToList();
+                            byte[] PPBytes = ICList.GetRange(10, 4).ToArray();
+                            int PixelPointer = BitConverter.ToInt32(PPBytes);
+                            byte[] RSBytes = ICList.GetRange(34, 4).ToArray();
+                            int RawSize = BitConverter.ToInt32(RSBytes);
+                            byte[] WBytes = ICList.GetRange(18,4).ToArray();
+                            int Width = BitConverter.ToInt32(WBytes);
+
+                            //Now let's do decoding by having all necessary info
+                            int BytesPerLine = Width % 4;
+                            byte[] BitmapData = ICList.GetRange(PixelPointer, RawSize).ToArray();
+                            List<byte> BMPList = BitmapData.ToList();
+                            List<byte> EncryptedBytes = new List<byte>();
+                            for (int i = Width*3; i<RawSize; i+=Width*3)
+                            {
+                                EncryptedBytes.AddRange(BMPList.GetRange(i, BytesPerLine));
+                                i += BytesPerLine;
+                            }
+                            Console.WriteLine("[+] Loaded successfully! [+]");
+                            Console.WriteLine("[~] Payload size (encrypted): " + EncryptedBytes.Count);
+                            Console.Write("===> Password (leave empty for none): ");
+                            string password = Console.ReadLine();
+                            if (password.Length == 0)
+                                password = "D3faultPassw0rd";
+                            byte[] decrypted = Decrypt(EncryptedBytes.ToArray(), Encoding.UTF8.GetBytes(password));
+                            string finalResult = Encoding.UTF8.GetString(decrypted);
+                            finalResult = finalResult.Trim();
+                            if (finalResult.StartsWith("IKT"))
+                            {
+                                Console.WriteLine("[+++] Successfully extracted text. [+++]");
+                                Console.WriteLine("Text length: " + finalResult.Length);
+                                Console.WriteLine("Text representation: " + finalResult.Substring(3));
+                            } else
+                            {
+                                Console.WriteLine("[---] Couldn't confirm the password.");
+                                Console.WriteLine("Extracted content length: "+decrypted.Length);
+                                Console.WriteLine("Text representation: " + finalResult);
+                                Console.WriteLine("[---] If text is corrupt, wrong password...");
+                            }
+                        } else
+                        {
+                            Console.WriteLine("[---] Image seems to be corrupted!");
                         }
                     }
                     else
@@ -184,37 +230,46 @@ namespace imageEncryptor
             return -1;
         }
 
-        public static byte[] EncryptText(string text, string key)
+        public static byte[] Encrypt(byte[] toEncrypt, byte[] key)
         {
-            byte[] encrypted;
-            byte[] Key = Encoding.UTF8.GetBytes(key);
-            List<byte> k = Key.ToList();
-            while (k.Count % 16 != 0)
+            TripleDESCryptoServiceProvider tdes = new TripleDESCryptoServiceProvider();
+            List<byte> K = new List<byte>();
+            K = key.ToList();
+            while (K.Count < 24)
             {
-                k.Add(0x00);
+                K.Add(0x00);
             }
-            Key = k.ToArray();
-            using (Aes aesAlg = Aes.Create())
+            key = K.ToArray();
+            tdes.Key = key;
+            tdes.Mode = CipherMode.ECB;
+            tdes.Padding = PaddingMode.Zeros;
+            ICryptoTransform cTransform = tdes.CreateEncryptor();
+            byte[] resultArray = cTransform.TransformFinalBlock(toEncrypt, 0, toEncrypt.Length);
+            tdes.Clear();
+            return resultArray;
+        }
+        public static byte[] Decrypt(byte[] Encrypted, byte[] key)
+        {
+            TripleDESCryptoServiceProvider tdes = new TripleDESCryptoServiceProvider();
+            List<byte> K = new List<byte>();
+            K = key.ToList();
+            while (K.Count < 24)
             {
-                aesAlg.Key = Key;
-                aesAlg.Mode = CipherMode.ECB; //we use ECB
-                var encryptor = aesAlg.CreateEncryptor(aesAlg.Key, aesAlg.IV);
-                using (var msEncrypt = new MemoryStream())
-                {
-                    using (var csEncrypt = new CryptoStream(msEncrypt, encryptor, CryptoStreamMode.Write))
-                    {
-                        using (var swEncrypt = new StreamWriter(csEncrypt))
-                        {
-                            swEncrypt.Write(text);
-                        }
-                        encrypted = msEncrypt.ToArray();
-                    }
-                }
+                K.Add(0x00);
             }
-            return encrypted;
+            key = K.ToArray();
+            tdes.Key = key;
+            tdes.Mode = CipherMode.ECB;
+            tdes.Padding = PaddingMode.Zeros;
+            ICryptoTransform cTransform = tdes.CreateDecryptor();
+            byte[] resultArray = cTransform.TransformFinalBlock(Encrypted, 0, Encrypted.Length);
+            tdes.Clear();
+            return resultArray;
         }
 
+
     }
+
     public class Baker {
         private static byte[] IDField = { 0x42, 0x4D }; //"BM"
         private static byte[] DataOffset = { 0x36, 0x00, 0x00, 0x00 }; //54.
@@ -236,7 +291,7 @@ namespace imageEncryptor
         /// Adds "BM" header to the file.
         /// </summary>
         /// <param name="s"></param>
-        public static void First(FileStream s)
+        public static void BMHeader(FileStream s)
         {
             s.Write(IDField, 0, IDField.Length);
         }
@@ -245,7 +300,7 @@ namespace imageEncryptor
         /// </summary>
         /// <param name="s"></param>
         /// <param name="BMPSize"></param>
-        public static void Second(FileStream s, int BMPSize)
+        public static void FileSizeHeader(FileStream s, int BMPSize)
         {
             byte[] Bytes = BitConverter.GetBytes(BMPSize);
             s.Write(Bytes, 0, Bytes.Length);
@@ -255,11 +310,11 @@ namespace imageEncryptor
         /// </summary>
         /// <param name="s"></param>
         /// <param name="header"></param>
-        public static void Third(FileStream s, string header)
+        public static void IKTMHeader(FileStream s, string header)
         {
-            Third(s, Encoding.UTF8.GetBytes(header));
+            IKTMHeader(s, Encoding.UTF8.GetBytes(header));
         }
-        public static void Third(FileStream s, byte[] header)
+        public static void IKTMHeader(FileStream s, byte[] header)
         {
             if (header.Length == 4) {
                 s.Write(header, 0, header.Length);
@@ -272,7 +327,7 @@ namespace imageEncryptor
         /// Writes offset to pixel array to the file.
         /// </summary>
         /// <param name="s"></param>
-        public static void Fourth(FileStream s)
+        public static void PixelOffsetHeader(FileStream s)
         {
             s.Write(DataOffset, 0, DataOffset.Length);
         }
@@ -290,7 +345,8 @@ namespace imageEncryptor
             s.Write(WBytes, 0, WBytes.Length);
             s.Write(HBytes, 0, HBytes.Length);
             s.Write(DIB_MagicBytes_1, 0, DIB_MagicBytes_1.Length);
-            byte[] RawBitmapSize = BitConverter.GetBytes(w * h * 4);
+            int padding = w % 4;
+            byte[] RawBitmapSize = BitConverter.GetBytes((w*3 + padding) * h);
             s.Write(RawBitmapSize, 0, RawBitmapSize.Length);
             s.Write(DIB_MagicBytes_2, 0, DIB_MagicBytes_2.Length);
         }
