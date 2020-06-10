@@ -81,7 +81,7 @@ namespace imageEncryptor
                         string ToBeEncrypted = "IKT" + content;
                         byte[] Encrypted = Encrypt(Encoding.UTF8.GetBytes(ToBeEncrypted), Encoding.UTF8.GetBytes(password));
                         List<byte> EncList = Encrypted.ToList();
-                        if (Encrypted.Length > H * (W % 4))
+                        if (Encrypted.Length > (H * (W % 4)-1))
                         {
                             Console.WriteLine("[!!!] Text to encode is too big to fit inside an image. Program will be stopped.");
                             Console.WriteLine("Length specified (ENCRYPTED data): " + Encrypted.Length + ". Should not exceed: " + H * (W % 4));
